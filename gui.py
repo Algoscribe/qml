@@ -6,6 +6,13 @@ from simulator import simulate
 from utils import ATTACKS
 import datetime
 
+import threading
+from tkinter import messagebox
+# Importing the actual functions from your main.py
+from main import generate_dataset, train_qlstm, show_all
+from ablation import ablation_test
+from feature_importance import show_feature_importance
+
 # =========================================================
 # THEME & DESIGN CONSTANTS (Cyber-Security Palette)
 # =========================================================
@@ -104,12 +111,12 @@ class QKDApp:
     def __init__(self, root):
         self.root = root
         self.root.title("QKD ATTACK INTELLIGENCE DASHBOARD v6.0")
-        self.root.state('zoomed') # Full screen fit
+        self.root.state('zoomed') 
         self.root.configure(bg=CLR_BG)
         
         self.setup_styles()
-        self.create_widgets()
-        
+        self.create_widgets() # The button is now inside here
+
     def setup_styles(self):
         style = ttk.Style()
         style.theme_use('clam')
@@ -166,6 +173,7 @@ class QKDApp:
         self.canvas_widget = self.canvas.get_tk_widget()
         self.canvas_widget.pack(expand=True, fill="both", pady=5)
 
+
         # Full Comparison Result Box
         self.res_var = tk.StringVar(value="Waiting for signal analysis...")
         res_display = tk.Label(right_pane, textvariable=self.res_var, font=("Consolas", 12), 
@@ -173,11 +181,22 @@ class QKDApp:
                                padx=20, pady=20, relief="ridge", borderwidth=1)
         res_display.pack(fill="x", pady=5)
 
+
         # 3. Footer Action Button
         self.run_btn = tk.Button(self.root, text="EXECUTE QUANTUM ANALYSIS & DATASET COMPARISON", 
                                  command=self.run, bg=CLR_ACCENT, fg="black", 
                                  font=("Consolas", 18, "bold"), height=2)
-        self.run_btn.pack(fill="x", padx=15, pady=15)
+        self.run_btn.pack(fill="x", padx=15, pady=5) # Reduced pady to make room
+
+        # 4. MAJOR PROJECT RESEARCH BUTTON (Yellow Button)
+        self.res_btn = tk.Button(self.root, text="🔬 RUN RESEARCH SUITE (ABLATION)", 
+                                 command=self.run_research_diagnostics, 
+                                 bg="#FFD700", fg="black", font=("Consolas", 12, "bold"))
+        self.res_btn.pack(fill="x", padx=15, pady=10)
+
+        # Initialize UI
+        self.update_info()
+        self.run()
 
         # Initialize UI with Normal State
         self.update_info()
@@ -232,9 +251,15 @@ class QKDApp:
 
         # --- DYNAMIC HIGHLIGHTING & DIRECTIONAL LOGIC ---
         highlight_map = {
-            "intercept": [0], "pns": [1], "blinding": [1, 4], 
-            "rng": [2, 3], "wavelength": [2], "combined": [0, 1, 2, 3, 4]
-        }
+    "normal": [],                 # no anomaly → baseline state
+    "intercept": [0],             # QBER increases
+    "pns": [1],                   # Key length drops
+    "trojan": [3],                # Entropy decreases
+    "blinding": [1, 4],           # Key ↓ + Loss ↑
+    "rng": [2, 3],                # Bias ↑ + Entropy ↓
+    "wavelength": [2],            # Bias shift
+    "combined": [0, 1, 2, 3, 4]   # all metrics affected
+}
         
         relevant_indices = highlight_map.get(atk, [])
         for idx in relevant_indices:
@@ -251,7 +276,7 @@ class QKDApp:
         self.ax.set_xticklabels(labels, color=CLR_TEXT, fontweight='bold', fontsize=12)
         self.ax.set_ylabel("Quantity Level / Scalar", color=CLR_ACCENT, fontsize=14)
         self.ax.tick_params(colors=CLR_TEXT)
-        self.ax.set_title(f"LIVE DATASET ANALYSIS: {atk.upper()}", color=CLR_ACCENT, pad=25, fontsize=18)
+        
 
         # Numerical Values above bars
         for bar_set in [b1, b2]:
@@ -261,6 +286,13 @@ class QKDApp:
                              ha='center', va='bottom', color=CLR_TEXT, fontsize=10, fontweight='bold')
 
         self.ax.legend(facecolor=CLR_PANEL, labelcolor=CLR_TEXT, fontsize=12)
+        self.ax.set_xlabel(
+    f"LIVE DATASET ANALYSIS: {atk.upper()}",
+    color="#FFD700",
+    fontsize=16,
+    labelpad=15,
+    fontweight="bold"
+)
         self.canvas.draw()
 
     def run(self):
@@ -277,6 +309,33 @@ class QKDApp:
         )
         
         self.graph(atk, q0, k0, b0, e0, l0, q, k, b, e, l)
+
+
+    def run_research_diagnostics(self):
+        """Runs your major project research logic inside the GUI."""
+        def background_task():
+            self.update_info_text("--- STARTING RESEARCH VALIDATION ---\n")
+            
+            # 1. Show Feature Importance (This will open your Matplotlib window)
+            self.update_info_text("Displaying Feature Importance Chart...\n")
+            show_feature_importance()
+            
+            # 2. Run Ablation (Choice 10 from your CLI)
+            self.update_info_text("Running Ablation Study... Check terminal for logs.\n")
+            ablation_test()
+            
+            # 3. Final Success Popup
+            messagebox.showinfo("Research Complete", "Ablation and Feature Importance Verified!")
+            self.update_info_text("--- RESEARCH COMPLETE: MODEL VALIDATED ---")
+
+        threading.Thread(target=background_task).start()
+
+    def update_info_text(self, text):
+        """Helper to print to your intelligence guide panel."""
+        self.info_text.config(state="normal") # Unlock for editing
+        self.info_text.insert("end", f"\n{text}")
+        self.info_text.see("end")
+        self.info_text.config(state="disabled") # Relock for safety
 
 # =========================================================
 # STARTING THE APPLICATION
